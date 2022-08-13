@@ -156,8 +156,8 @@ then the operation is treated specially as follows:
 "
   (let* ((underscore-predicate
            (lambda (x)
-             (when (symbolp x)
-               (symbol-with-name-p x "_"))))
+             (and (symbolp x)
+                  (symbol-with-name-p x "_"))))
          (op (cond ((symbolp operation)
                     (list operation object))
 
