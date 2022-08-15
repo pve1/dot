@@ -110,7 +110,7 @@ The previous example would therefore become:
 
 If the first element in an operation is one of the following symbols
 
-  (:last :slot :set :tee :key cl:quote)
+  (:last :slot :set :tee :key cl:quote :esc)
 
 then the operation is treated specially as follows:
 
@@ -153,6 +153,11 @@ then the operation is treated specially as follows:
        (:tee (* 2) print) ; prints 4
        (- 2)) ; input is the result of the (+ 1) operation.
    => 0
+
+:esc FORM
+
+    Evaluates FORM unmodified.
+
 "
   (let* ((underscore-predicate
            (lambda (x)
