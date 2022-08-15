@@ -190,6 +190,10 @@ then the operation is treated specially as follows:
                          ,obj)))
 
                    ((and (listp operation)
+                         (eq :esc (first operation)))
+                    (second operation))
+
+                   ((and (listp operation)
                          (tree-contains-p underscore-predicate
                                           operation))
                     (alexandria:with-gensyms (obj)
@@ -208,6 +212,62 @@ then the operation is treated specially as follows:
   (if rest
       `(dot ,op ,@rest)
       op)))
+
+;;; Define dot
+
+(defun try-define-dot-pattern (pattern step)
+  (destructuring-bind ((op &rest args) when-match) pattern
+    (case op
+      (:symbol (when (eq (first args) step)
+                 when-match))
+      (:symbol-name (when (symbol-with-name-p step
+                                              (string (first args)))
+                      when-match))
+      (:type (when (typep step (first args))
+               (let ((parameter (second args)))
+                 (subst step parameter when-match))))
+      (:any (subst step (first args) when-match)))))
+
+(defun translate-define-dot-step (patterns step)
+  (or (loop :for pattern :in patterns
+              :thereis (try-define-dot-pattern pattern step))
+      step))
+
+(defun translate-define-dot-path (path patterns)
+  ;; Preprocess a single symbol into (:symbol sym)
+  (setf patterns (loop :for (op result) :in patterns
+                       :collect (if (symbolp op)
+                                    (list (list :symbol op) result)
+                                    (list op result))))
+  (loop :for step :in path
+        :collect (translate-define-dot-step patterns step)))
+
+(defmacro define-dot (name (&key) &body patterns)
+  (alexandria:with-gensyms (object path translated-path)
+    `(defmacro ,name (,object &rest ,path)
+       (let ((,translated-path (translate-define-dot-path ,path
+                                                          ',patterns)))
+         `(dot ,,object ,@,translated-path)))))
+
+;;; Examples
+
+(define-dot cons-dot ()
+  ((:symbol left) car)
+  ((:symbol right) cdr)
+  ((:any form) (:esc (error "Cannot understand step: ~S." 'form))))
+
+;; (cons-dot '(1 2 3 4) right right left)
+;; => 3
+
+(define-dot array-dot ()
+  ((:type integer n) (aref _ n))
+  ((:type symbol n) (aref _ n)))
+
+;; (let ((array #(#(1 2) #(3 4)))
+;;       (i 0)
+;;       (j 1))
+;;   (array-dot array i j (evenp _)))
+;; => T
 
 ;;; Tests
 
